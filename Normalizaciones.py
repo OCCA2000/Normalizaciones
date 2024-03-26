@@ -1,6 +1,7 @@
 from datetime import datetime
 from time import sleep
 from os import mkdir, path
+from sys import exit
 
 day=datetime.today().day
 month=datetime.today().month
