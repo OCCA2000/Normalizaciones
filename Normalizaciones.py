@@ -2,46 +2,74 @@ from datetime import datetime
 
 day=datetime.today().day
 month=datetime.today().month
-if month<9:
+if day<=9:
+    day='0'+str(day)
+if month<=9:
     month='0'+str(month)
 month=str(month)
 day=str(day)
 
 input_file_name='RequerimientoExtPlazo_'+day+month+'.txt'
 
-normalization=2
-if(normalization==1):
-    output_file_name='INPUT_LOAN_TAM'
-elif(normalization==2):
-    output_file_name='INPUT_LOAN_FILE_MORA'
-else:
-    raise Exception('Ingresar una normalización adecuada')
+normalization=0
+while(normalization<1 or normalization>2):
+    normalization=int(input('Ingrese el número de normalización (1 o 2): '))
+    if(normalization==1):
+        raw_output_file_name='INPUT_LOAN_TAM'
+        output_file_10_name='N1_10.txt'
+        output_file_16_name='N1_16.txt'
+        break
+    elif(normalization==2):
+        raw_output_file_name='INPUT_LOAN_FILE_MORA'
+        output_file_10_name='N2_10.txt'
+        output_file_16_name='N2_16.txt'
+        break
+    else:
+        print('Solo puede ingresar 1 o 2')
+        
+#days=int(input('Ingrese el número de días: '))
 
 print('Archivo de entrada: '+input_file_name)
-print('Archivo de salida: '+output_file_name)
+print('Archivo de salida: '+raw_output_file_name)
 
 input_file = open(input_file_name)
-raw_output_file = open(output_file_name,'w')
-output_file_10 = open('OP_10.txt','w')
-output_file_16 = open('OP_16.txt','w')
+raw_output_file = open(raw_output_file_name,'w')
+output_file_10 = open(output_file_10_name,'w')
+output_file_16 = open(output_file_16_name,'w')
+sql_query=open('query.sql','w')
+sql_query.write("SELECT ACCT_NO, to_date(date_payment + 2415020, 'j') FROM REPS WHERE ACCT_NO IN ( ")
 
 lines = input_file.readlines()
+counter_wrong_operations=0
 for counter, line in enumerate(lines):
     fields=line.strip().split('\t')
     if(counter!=0):
         fields[1]=fields[1].replace('"', '')
+        if(int(fields[3])>24):
+            print(fields[1]+' no considerada por número de cuotas: '+str(fields[3]))
+            counter_wrong_operations+=1
+            continue
         while(len(fields[3])<3):
             fields[3]='0'+fields[3]
         output_file_10.write(fields[1]+'\n')
         register='000000'+fields[1]
         output_file_16.write(register+'\n')
+        if counter != len(lines)-1:
+            sql_query.write(f"'{register}', ")
+        else:
+            sql_query.write(f"'{register}'")
         register=register+';'+fields[3]+';'
         if(normalization==2):
             register=register+'003;'
         print(register)
         raw_output_file.write(register+'\n')
+sql_query.write(");")
+#sql_query.write(f") and to_date(date_payment + 2415020, 'j') between sysdate and sysdate - {days};")
+
+print('Registros totales: '+str(counter-counter_wrong_operations))
 
 input_file.close()
 raw_output_file.close()
 output_file_16.close()
 output_file_10.close()
+sql_query.close()
